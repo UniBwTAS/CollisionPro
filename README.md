@@ -3,6 +3,9 @@
 
 ```A framework for collision probability distribution estimation via temporal difference learning.```
 
+![Overview CollisionPro](./assets/overview_collisionpro.png "Overview CollisionPro")
+
+---
 
 <p align="center">
     <img src="assets/demo.gif" alt="Demo GIF" />
