@@ -1,8 +1,12 @@
-import copy
 import numpy as np
 
 
 class Approximator:
+    """
+    The approximator is a table (matrix) with dimension #states x #lookahead-steps.
+    Each approximator must provide an inference function that is passed to the CollisionPro instance in order to calculate the targets.
+    """
+
     def __init__(self, n_states, n_h, alpha=0.1, alpha_decrease=.9):
         self.n_states = n_states
         self.alpha = alpha

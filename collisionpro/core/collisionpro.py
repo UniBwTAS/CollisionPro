@@ -17,7 +17,7 @@ class Sample:
         return self.states[0]
 
     @property
-    def td_states(self):
+    def target_states(self):
         return self.states[1:]
 
     def is_collision_predecessor(self):
@@ -30,19 +30,33 @@ class CollisionPro:
     def __init__(self,
                  env,
                  n_h,
-                 p_c,
-                 p_nc,
-                 lambda_val,
+                 p_c=1.0,
+                 p_nc=1.0,
+                 lambda_val=0.5,
                  n_stacking=1,
                  td_max=None,
                  controller=None,
                  ):
         """
-        :param p_c: Sampling probability for collision samples
-        :param p_nc: Sampling probability for non-collision samples
-        :param lambda_val: Lambda value for TD(lambda)
-        :param n_h: Number of heads/predictors
-        :param td_max: Maximum return horizon (td_max <= N_h)
+        CollisionPro is a Python library designed for sample generation, target generation, and evaluation
+        in collision avoidance tasks. It provides functionalities for:
+
+        - Generating collision and non-collision samples from a given environment based on specified sampling strategy (p_c, p_nc).
+        - Calculating fixed-finite TD-lambda targets for collision events.
+        - Evaluating the performance of a collision avoidance algorithm.
+
+        See the documentation for more detailed information and usage examples.
+
+        Args:
+            env: The environment object conforming to the OpenAI Gym interface. It should provide a step function
+                and a binary flag indicating collision events within the environment's information dictionary.
+            n_h: Number of lookahead steps (predictors) to be used for sample generation and target calculation.
+            p_c: Sampling probability for collision samples.
+            p_nc: Sampling probability for non-collision samples.
+            lambda_val: Lambda value for calculating TD-lambda targets.
+            n_stacking: Number of observations to be stacked for creating state representations.
+            td_max: Maximum return horizon for TD-lambda calculations (defaults to n_h if not specified).
+            controller: A controller object that provides a 'get_action(state)' function. Set to None if no controller is used.
         """
 
         self.env = env
@@ -61,11 +75,74 @@ class CollisionPro:
         self.eval_samples = None
         self.eval_hist = []
 
-    # =========================================================================
-    # --- Sample Generation Functionality -------------------------------------
-    # =========================================================================
+    # =============================================================================================
+    # --- Initialize ------------------------------------------------------------------------------
+    # =============================================================================================
+
+    def _get_lambda_matrix(self):
+        """
+            Calculates the lambda matrix used for TD(lambda) target calculation.
+
+            This function generates the lambda matrix, which plays a crucial role in calculating TD(lambda) targets.
+            Each row of the matrix corresponds to a specific predictor (lookahead step)
+            and contains the corresponding lambda values for calculating the discounted n-step returns.
+
+            The first row has only one non-zero entry, representing the full weight on the immediate reward (collision or non-collision.
+            Subsequent rows have increasing numbers of non-zero entries (seconds row has two non-zero entries and so on).
+            Each row sums up to 1, ensuring the correct weighting of rewards within the TD(lambda) target calculation.
+
+            Returns:
+                NumPy array representing the lambda matrix with dimensions (n_h x td_max), where:
+                    - n_h: Number of lookahead steps (predictors).
+                    - td_max: Maximum return horizon for TD-lambda calculations.
+        """
+
+        # Generate lambda vector
+        lambda_vec = (1 - self.lambda_val) * np.array([self.lambda_val ** (power + 1) for power in range(self.td_max)])
+
+        # Replicate for all rows
+        lambda_mat = np.tile(lambda_vec, (self.n_h, 1))
+
+        # Set values that are unreachable for the heads to zero.
+        for idx_r in range(self.n_h):
+            for idx_c in range(self.td_max):
+                if idx_r < idx_c:
+                    lambda_mat[idx_r, idx_c] = 0.0
+
+        # Add remainder to the last element (Sum must be 1)
+        for idx_r in range(self.n_h):
+            idx_c = min(idx_r, self.td_max - 1)
+            lambda_mat[idx_r, idx_c] += (1 - np.sum(lambda_mat[idx_r, :]))
+
+        return lambda_mat
+
+    # =============================================================================================
+    # --- Sample Generation Functionality ---------------------------------------------------------
+    # =============================================================================================
 
     def run_episode(self):
+        """
+            Runs a single episode in the environment and collects observations, actions, rewards, and collision information.
+
+            This function interacts with the environment to simulate an episode. It starts by resetting the environment
+            and then iterates through steps until the episode terminates. During each step, it:
+
+            - Retrieves the current state from the environment.
+            - If a controller is provided, it queries the controller for an action based on the current state.
+            - Stores the current state, action, and reward in the episode data.
+            - Executes the action in the environment and receives the next state, reward, and termination information.
+            - Repeats these steps until the episode ends due to termination or truncation.
+
+            Finally, the function checks for a collision event based on the environment's information and updates the episode data accordingly.
+
+            Returns:
+                A dictionary containing the collected episode data:
+                    - observations: List of observed states throughout the episode.
+                    - actions: List of actions taken in each step (None for the terminal state).
+                    - rewards: List of rewards received in each step.
+                    - collision: Boolean indicating whether a collision occurred during the episode.
+            """
+
         self.env.reset()
         new_state = self.env.state
 
@@ -100,6 +177,25 @@ class CollisionPro:
         return episode
 
     def stacking(self, episode):
+        """
+            Processes an episode data dictionary to generate stacked state representations and corresponding samples.
+
+            This function iterates through the observations collected during an episode and creates stacked state representations.
+            Each stacked state consists of the last `n_stacking` observations from the episode. It then generates samples
+            containing the stacked state, reward received at that state, and the action taken (if applicable).
+
+            Args:
+                episode: A dictionary containing episode data generated by the `run_episode` function.
+
+            Returns:
+                A dictionary containing processed episode data:
+                    - samples: List of samples, each containing:
+                        - state: NumPy array representing the stacked state.
+                        - reward: Reward received at the corresponding state.
+                        - action: Action taken at the corresponding state (None for the terminal state).
+                    - collision: Boolean indicating whether a collision occurred during the episode.
+        """
+
         samples_stacked = []
         obs_stacked = []
         for idx in range(len(episode["observations"])):
@@ -114,6 +210,29 @@ class CollisionPro:
         return {"samples": samples_stacked, "collision": episode["collision"]}
 
     def create_td_samples(self, episode):
+        """
+            Generates TD (Temporal Difference) samples from an episode data dictionary.
+
+            This function processes an episode containing stacked state representations, rewards, and actions to create
+            TD samples suitable for TD-learning algorithms. It calculates the number of steps to collision for each
+            sample and creates TD samples containing:
+
+            - A sequence of states (up to the maximum lookahead horizon or collision event).
+            - Number of steps to the collision event (if applicable, -1 otherwise).
+            - A sequence of rewards received in those states.
+
+            Args:
+                episode: A dictionary containing processed episode data generated by the `stacking` function.
+
+            Returns:
+                A dictionary containing TD samples:
+                    - td_samples: List of TD samples, each containing:
+                        - states: List of states within the lookahead horizon (up to `self.td_max`).
+                        - steps2collision: Number of steps to the next collision event (-1 if not applicable).
+                        - rewards: List of rewards received in the corresponding states.
+                    - collision: Boolean indicating whether a collision occurred during the episode.
+        """
+
         episode_len = len(episode["samples"])
 
         # Calculate number of steps to collision (-1 means collision event isn't relevant)
@@ -134,6 +253,24 @@ class CollisionPro:
         return {"td_samples": td_samples, "collision": episode["collision"]}
 
     def sampling(self, episode):
+        """
+            Performs stratified sampling of TD samples from an episode for policy learning.
+
+            This function separates TD samples from a collision episode into collision and non-collision samples. It then
+            performs stratified sampling based on the specified probabilities:
+
+            - `self.p_nc`: Probability of sampling non-collision samples.
+            - `self.p_c`: Probability of sampling collision samples.
+
+            The function returns a combined list of sampled non-collision and collision samples.
+
+            Args:
+                episode: A dictionary containing processed episode data and TD samples generated by the `create_td_samples` function.
+
+            Returns:
+                List of sampled TD samples for policy learning.
+        """
+
         if episode["collision"]:
             episode_nc = episode["td_samples"][:-self.n_h - 1]
             episode_c = episode["td_samples"][-self.n_h - 1:]
@@ -147,6 +284,26 @@ class CollisionPro:
         return samples_nc + samples_c
 
     def generate_samples(self, n, return_all=False):
+        """
+            Generates a specified number of TD samples for policy learning.
+
+            This function iteratively generates episodes by running the environment, processing them into stacked states
+            and TD samples, and performing stratified sampling based on collision events. It continues generating episodes
+            until the desired number of samples (`n`) is obtained.
+
+            Args:
+                n: Number of TD samples to generate.
+                return_all: Boolean flag indicating whether to return all generated episode data (default: False).
+
+            Returns:
+                If `return_all` is False:
+                    A list of `n` randomly sampled TD samples for policy learning.
+                If `return_all` is True:
+                    A tuple containing:
+                        - A list of `n` randomly sampled TD samples for policy learning.
+                        - A list of all generated episode data dictionaries.
+        """
+
         samples = []
         all_samples = []
         info = {
@@ -167,29 +324,9 @@ class CollisionPro:
         else:
             return random.sample(samples, n)
 
-    # =========================================================================
-    # --- Target Generation Functionality -------------------------------------
-    # =========================================================================
-
-    def _get_lambda_matrix(self):
-        # Generate lambda vector
-        lambda_vec = (1 - self.lambda_val) * np.array([self.lambda_val ** (power + 1) for power in range(self.td_max)])
-
-        # Replicate for all rows
-        lambda_mat = np.tile(lambda_vec, (self.n_h, 1))
-
-        # Set values that are unreachable for the heads to zero.
-        for idx_r in range(self.n_h):
-            for idx_c in range(self.td_max):
-                if idx_r < idx_c:
-                    lambda_mat[idx_r, idx_c] = 0.0
-
-        # Add remainder to the last element (Sum must be 1)
-        for idx_r in range(self.n_h):
-            idx_c = min(idx_r, self.td_max - 1)
-            lambda_mat[idx_r, idx_c] += (1 - np.sum(lambda_mat[idx_r, :]))
-
-        return lambda_mat
+    # =============================================================================================
+    # --- Evaluation Functionality ----------------------------------------------------------------
+    # =============================================================================================
 
     def generate_evaluation_samples(self, N_samp_eval, p_s=0.1):
         """
@@ -250,7 +387,19 @@ class CollisionPro:
         self.eval_hist.append({"acc": errors_acc, "pes": errors_pes})
         return errors_acc, errors_pes
 
+    # =============================================================================================
+    # --- Target Generation -----------------------------------------------------------------------
+    # =============================================================================================
+
     def generate_training_data(self, samples: List[Sample], func_inference: Callable):
+        """
+        This function is the heart of the CollisionPro functionality.
+        It calculates the targets for the collision probability distributions.
+
+        :param samples: A list of Samples
+        :param func_inference: A function that returns the current collision probability distribution estimate given the states
+        :return: A tuple with the inputs (states) and targets (TD-return), where the last value for each target is the weighing of the loss
+        """
 
         input_dim = samples[0].cur_state.shape
         n_samples = len(samples)
@@ -265,45 +414,50 @@ class CollisionPro:
             inputs[idx] = sample.cur_state
 
         # =================================================
-        # --- Evaluate future states ----------------------
+        # --- Evaluate target states ----------------------
         # =================================================
 
-        future_states = []
-
+        all_target_states = []
         idx_global = 0
-
         for sample in samples:
-            future_states.extend(sample.td_states)
-            n_future_states = len(sample.td_states)
-            sample.indices = (list(range(idx_global, idx_global + n_future_states)))
-            idx_global += n_future_states
+            all_target_states.extend(sample.target_states)
+            n_target_states = len(sample.target_states)
+            sample.indices = (list(range(idx_global, idx_global + n_target_states)))
+            idx_global += n_target_states
 
-        future_states = np.row_stack(future_states).squeeze()
-
-        P_pred = func_inference(future_states)
+        # Calculate for all target states the predicted probability distributions
+        all_target_states = np.row_stack(all_target_states).squeeze()
+        all_target_probs = func_inference(all_target_states)
 
         # =================================================
         # --- Generate targets ----------------------------
         # =================================================
 
+        # Allocate the targets for the approximator. +1 as the last entry specifies the weighing for the loss.
         targets = np.zeros((n_samples, self.n_h + 1))
-        P_1_to_n_tilde_template = np.tril(-np.ones((self.n_h, self.td_max), dtype=float))
+        # By default, set all values to -1
+        target_prob_triangular_template = np.tril(-np.ones((self.n_h, self.td_max), dtype=float))
 
         for idx, sample in enumerate(samples):
-            P_1_to_n_tilde = copy.deepcopy(P_1_to_n_tilde_template)
+            target_prob_triangular = np.copy(target_prob_triangular_template)
 
+            # Create probability values for each row, where the ith row corresponds to the ith + 1 predictor.
             if sample.is_collision_predecessor():
-                td_steps = min(len(sample.td_states) - 1, sample.steps2collision - 1)
-                for idx_td in range(len(sample.td_states) - 1):
-                    V_k = P_pred[sample.indices[idx_td]]
-                    P_1_to_n_tilde[:, idx_td] = np.concatenate([np.zeros(idx_td + 1), V_k[:-(idx_td + 1)]])
-            else:
-                for idx_td in range(self.td_max):
-                    V_k = P_pred[sample.indices[idx_td]]
-                    P_1_to_n_tilde[:, idx_td] = np.concatenate([np.zeros(idx_td + 1), V_k[:-(idx_td + 1)]])
+                # If sample is affected by a collision, then set collision probs and all successor probs to -1.
 
-            # Calculate TD-errors and loss weights
-            targets[idx, :-1] = np.squeeze(np.sum(P_1_to_n_tilde * self.lambda_mat, axis=1))
+                for i in range(len(sample.target_states) - 1):
+                    target_prob_i = all_target_probs[sample.indices[i]]
+                    target_prob_triangular[:, i] = np.concatenate([np.zeros(i + 1), target_prob_i[:-(i + 1)]])
+
+            else:
+                for i in range(self.td_max):
+                    target_prob_i = all_target_probs[sample.indices[i]]
+                    target_prob_triangular[:, i] = np.concatenate([np.zeros(i + 1), target_prob_i[:-(i + 1)]])
+
+            # Calculate TD-targets
+            targets[idx, :-1] = np.sum(target_prob_triangular * self.lambda_mat, axis=1)
+
+            # Add weighting for loss function
             targets[idx, -1] = self.p_nc / self.p_c if sample.is_collision_predecessor() else 1.0
 
         return inputs, targets

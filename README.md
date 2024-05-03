@@ -64,7 +64,7 @@ Once you have installed CollisionPro (see [Installation](#installation)), you ca
 + No value function approximation
 
 ```python
-from CollisionPro.examples.random_walk.main import run
+from collisionpro.examples.random_walk.main import run
 run()
 ```
 
