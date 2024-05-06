@@ -56,7 +56,8 @@ import collisionpro
 
 ## Run Examples
 
-We provide some examples for an easier/faster understanding of CollisionPro. Each example consists of an environment (*env.py*), an approximator (*approximator.py*), that learns the probability distribution and a main script (*main.py*) that is setting up the training pipeline.
+We provide some examples for an easier/faster understanding of CollisionPro. 
+Each example consists of an environment (*env.py*), an approximator (*approximator.py*), that learns the probability distribution, a controller (*controller.py*) if required, that provides an action given the current state, and a main script (*main.py*) that is setting up the training pipeline.
 For more information see [HowTo Guide](./docs/HowTo.md).
 
 Once you have installed CollisionPro (see [Installation](#installation)), you can easily run our examples:
@@ -65,7 +66,11 @@ Once you have installed CollisionPro (see [Installation](#installation)), you ca
 
 ![Random Walk environment with 7 states](./assets/docs/random_walk.png "Random Walk Example")
 
-+ No action space
+The Random Walk environment consists of sequential states, where the first and last state indicate terminal states.
+The agent transitions with a 0.5 probability to the right and a 0.5 probability to the left. 
+For each state the agent receives a reward of r=0, except for terminal states r=-1, which corresponds to a *collision*.
+
++ No action space → no controller
 + No value function approximation
 
 ```python

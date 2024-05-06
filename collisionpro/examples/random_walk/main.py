@@ -1,9 +1,10 @@
+import matplotlib.pyplot as plt
+import numpy as np
+
 from collisionpro.examples.random_walk.env import RandomWalk
 from collisionpro.examples.random_walk.approximator import Approximator
 from collisionpro.core.collisionpro import CollisionPro
 
-import matplotlib.pyplot as plt
-import numpy as np
 
 
 def run(n_h=5,
