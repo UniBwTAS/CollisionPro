@@ -92,7 +92,7 @@ The ego ball can move along the y-axis and is modeled in y-direction as a mass-s
 
 + Action space available → controller provided
 + Value function approximation via TensorFlow
-+ Multi-agent, partially observable environment
++ Multi-agent, partially observable, continuous environment
 
 Execute the following, which will iteratively generate samples, learn the collision probability distribution and finally generates collision characteristics that are plotted.
 
