@@ -66,9 +66,9 @@ Once you have installed CollisionPro (see [Installation](#installation)), you ca
 
 ![Random Walk environment with 7 states](./assets/docs/random_walk.png "Random Walk Example")
 
-The Random Walk environment consists of sequential states, where the first and last state indicate terminal states.
+The Random Walk environment consists of sequential states, where the first and last states indicate terminal states. 
 The agent transitions with a 0.5 probability to the right and a 0.5 probability to the left. 
-For each state the agent receives a reward of r=0, except for terminal states r=-1, which corresponds to a *collision*.
+For each non-terminal state, the agent receives a reward of r=0, while for terminal states, the agent receives a reward of r=-1, which corresponds to a *collision*.
 
 + No action space → no controller
 + No value function approximation
@@ -80,7 +80,22 @@ run()
 
 **Moving Circles (Advanced Example)**
 
-TODO
+The Moving Circles environment is centered around the ego circle (grey), which moves along the x-axis with a constant linear velocity. 
+Obstacles (red circles) oscillate along the y-axis and can be modeled as mass-spring systems (no energy dissipation). 
+When the outer circles of the ego and any obstacle overlap, a collision event is triggered, terminating the episode and resulting in a reward of -1.
+
+Both the ego and obstacles predict each other's movements using constant kinematics into the future and adjust their positions accordingly. 
+The ego ball can move along the y-axis and is modeled in y-direction as a mass-spring-damper system, while the obstacles can move along the x-axis.
+
++ Action space available → controller provided
++ Value function approximation via TensorFlow
+
+Execute the following, which will iteratively generate samples, learn the collision probability distribution and finally generates collision characteristics that are plotted.
+
+```python
+from collisionpro.examples.moving_circles.main import run
+run()
+```
 
 ## HowTo Guide
 

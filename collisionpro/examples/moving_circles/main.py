@@ -6,17 +6,19 @@ from collisionpro.core.visualize import create_collision_characteristics
 
 
 def run(n_h=20,
-        td_max=5,
+        td_max=10,
         p_c=1.0,
         p_nc=0.2,
-        n_training_cycles=5,
+        n_training_cycles=15,
         n_samp_total=2500,
         n_stacking=1,
         lr_start=2e-4,
         lr_decay=0.999,
-        lambda_val=.7,
+        lambda_val=0.7,
         batch_size=32,
-        epochs=16):
+        epochs=16,
+        save_figures=False,
+        path=None):
 
     # =========================================================
     # --- Initialization --------------------------------------
@@ -65,7 +67,8 @@ def run(n_h=20,
                                      kind="both",
                                      num=3,
                                      dt=env_moving_circles.dt,
-                                     path="")
+                                     save_figures=save_figures,
+                                     path=path)
 
     # =========================================================
     # --- Animate ---------------------------------------------
@@ -73,3 +76,8 @@ def run(n_h=20,
 
     # env_moving_circles.reset()
     # env_moving_circles.rendering(controller, delta_time=0.025)
+
+
+if __name__ == "__main__":
+    run()
+
