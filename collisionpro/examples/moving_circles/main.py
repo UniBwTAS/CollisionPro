@@ -17,6 +17,7 @@ def run(n_h=20,
         lambda_val=0.7,
         batch_size=32,
         epochs=16,
+        num_collision_characteristics=5,
         save_figures=False,
         path=None):
 
@@ -65,7 +66,7 @@ def run(n_h=20,
     create_collision_characteristics(func_inference=approximator.inference,
                                      collision_pro=collision_pro,
                                      kind="both",
-                                     num=3,
+                                     num=num_collision_characteristics,
                                      dt=env_moving_circles.dt,
                                      save_figures=save_figures,
                                      path=path)

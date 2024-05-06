@@ -80,7 +80,10 @@ run()
 
 **Moving Circles (Advanced Example)**
 
-The Moving Circles environment is centered around the ego circle (grey), which moves along the x-axis with a constant linear velocity. 
+![Moving Circles](./assets/moving_circles.png "Moving Circle Scheme")
+
+
+The Moving Circles environment is centered around the ego circle (blue), which moves along the x-axis with a constant linear velocity. 
 Obstacles (red circles) oscillate along the y-axis and can be modeled as mass-spring systems (no energy dissipation). 
 When the outer circles of the ego and any obstacle overlap, a collision event is triggered, terminating the episode and resulting in a reward of -1.
 
@@ -89,6 +92,7 @@ The ego ball can move along the y-axis and is modeled in y-direction as a mass-s
 
 + Action space available → controller provided
 + Value function approximation via TensorFlow
++ Multi-agent, partially observable environment
 
 Execute the following, which will iteratively generate samples, learn the collision probability distribution and finally generates collision characteristics that are plotted.
 
