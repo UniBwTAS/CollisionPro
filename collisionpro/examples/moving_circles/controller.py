@@ -36,11 +36,21 @@ class Controller:
         else:
             noise = 0.0
 
+        obs_rel = None
+        for obs in self.env.obstacles:
+            if self.env.obstacle_is_relevant(obs):
+                obs_rel = obs
+                break
+
+        if obs_rel is None:
+            return 0.0
+
         # Get distance to next resonator
-        dist = np.linalg.norm([self.env.get_resonator_x(state, 0), self.env.get_resonator_y(state, 0)])
+        x_rel = self.env.ego.x - obs_rel.x
+        dist = np.linalg.norm([self.env.ego.x - obs_rel.x, self.env.ego.y - obs_rel.y])
 
         # Get y-dist between ego and resonator
-        y_dist = self.env.get_resonator_y(state, 0)
+        y_dist = obs_rel.y - self.env.ego.y
 
         # Based on distance and y-offset calculate dodge maneuver
         u = np.clip(-np.sign(y_dist) * (1 / dist) ** 1.5 * self.u_repulsive + noise, -self.u_y_max, self.u_y_max)

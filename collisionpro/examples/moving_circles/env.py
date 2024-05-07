@@ -1,4 +1,4 @@
-from math import sqrt
+import math
 import random
 import numpy as np
 from copy import deepcopy
@@ -25,7 +25,7 @@ class Ego:
         self.action = 0
 
         # Optimal damping constant for fast return
-        self.d_y = 2 * sqrt(self.m * self.k_y)
+        self.d_y = 2 * math.sqrt(self.m * self.k_y)
 
     @property
     def pos(self):
@@ -73,7 +73,7 @@ class Resonator:
         self.t_coll_shift = random.uniform(-1.5, 1.5)
 
         # Critical damping coefficient
-        self.d = 2 * sqrt(self.m * self.k_x)
+        self.d = 2 * math.sqrt(self.m * self.k_x)
 
     @property
     def pos(self):
@@ -219,10 +219,15 @@ class MovingCircles:
     def get_resonator_r(self, state, ith):
         return state[self.n_state_prefix + ith * self.n_res_dim + 5]
 
-    def obstacle_is_relevant(self, obstacle):
+    def obstacle_is_visible(self, obstacle):
         if self.ego.x + self.x_rear <= obstacle.x <= self.ego.x + self.x_front:
             return True
         return False
+
+    def obstacle_is_relevant(self, obstacle):
+        if obstacle.x + obstacle.r + self.ego.radius < self.ego.x:
+            return False
+        return True
 
     def collision_detection(self):
         for obstacle in self.obstacles:
@@ -274,7 +279,7 @@ class MovingCircles:
 
             state = state + state_obs
 
-        # If not enough relevant obstacles found, add dummies
+        # If not enough relevant obstacles, fill state vector with zeros
         for idx in range(self.n_rel_obs - len(self.relevant_obstacle)):
             state.append(self.x_front)
             state.append(0)
@@ -326,7 +331,7 @@ class MovingCircles:
 
         # Update obstacles
         for obstacle in self.obstacles:
-            if self.obstacle_is_relevant(obstacle):
+            if self.obstacle_is_visible(obstacle):
                 obstacle.step(self.ego)
             else:
                 self.obstacles.remove(obstacle)
@@ -346,7 +351,7 @@ class MovingCircles:
 
         return self.state, reward, self.terminated, False, info
 
-    def rendering(self, controller, delta_time=None, max_length=None, EuclidToPixel=20):
+    def rendering(self, controller, delta_time=None, max_length=None, EuclidToPixel=30):
         X_min = self.x_rear
         X_max = self.x_front
         X_width = X_max - X_min
@@ -397,7 +402,7 @@ class ArcadeVisualization(arcade.Window):
         ego_x, ego_y = self.env.ego.pos
         ego_px, ego_py = self.toPixelCoord(0, ego_y)
 
-        # Draw the vertical line
+        # Draw the vertical lines of the background grid
         v_line_ego = -ego_x % 1
         v_line_start = v_line_ego + self.X_min
         v_line_end = v_line_ego + self.X_max
@@ -405,13 +410,19 @@ class ArcadeVisualization(arcade.Window):
             px, _ = self.toPixelCoord(x, 0)
             arcade.draw_line(px, 0, px, self.toPixel(self.Y_width), (230, 230, 230), 1)
 
+        # Draw the horizontal lines of the background grid
+        for y in np.linspace(math.floor(-self.env.y_height), math.ceil(self.env.y_height), int(self.Y_width + 1)):
+            _, py = self.toPixelCoord(0, y)
+            arcade.draw_line(0, py, self.toPixel(self.X_width), py, (230, 230, 230), 1)
+
         # Visualize ego
         arcade.draw_circle_filled(ego_px, ego_py, self.toPixel(self.env.ego.radius), arcade.color.BLUE, num_segments=50)
 
         # Visualize obstacles
         for obs in self.env.obstacles:
             px, py = self.toPixelCoord(obs.x - ego_x, obs.y)
-            arcade.draw_circle_filled(px, py, self.toPixel(obs.r), arcade.color.RED)
+            obs_color = (255, 0, 0) if self.env.obstacle_is_relevant(obs) else (255, 196, 296)
+            arcade.draw_circle_filled(px, py, self.toPixel(obs.r), obs_color)
 
         # Visualize action
         if self.action_val > 0.0:
