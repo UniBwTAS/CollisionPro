@@ -115,7 +115,8 @@ The code explained within that tutorial can be found [here](../collisionpro/exam
 
 ## Advanced Example
 
-TODO
+In this example we will consider the [Moving Circles](../collisionpro/examples/moving_circles/env.py) environment.
+This environment 
 
 ## Sample Generation
 
