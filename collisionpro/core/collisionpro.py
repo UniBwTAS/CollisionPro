@@ -70,7 +70,7 @@ class CollisionPro:
 
         self.n_stacking = n_stacking
 
-        self.lambda_mat = self._get_lambda_matrix()
+        self.lambda_matrix = self._get_lambda_matrix()
         self.eval_samples = None
         self.eval_hist = []
 
@@ -100,20 +100,20 @@ class CollisionPro:
         lambda_vec = (1 - self.lambda_val) * np.array([self.lambda_val ** (power + 1) for power in range(self.td_max)])
 
         # Replicate for all rows
-        lambda_mat = np.tile(lambda_vec, (self.n_h, 1))
+        lambda_matrix = np.tile(lambda_vec, (self.n_h, 1))
 
         # Set values that are unreachable for the heads to zero.
         for idx_r in range(self.n_h):
             for idx_c in range(self.td_max):
                 if idx_r < idx_c:
-                    lambda_mat[idx_r, idx_c] = 0.0
+                    lambda_matrix[idx_r, idx_c] = 0.0
 
         # Add remainder to the last element (Sum must be 1)
         for idx_r in range(self.n_h):
             idx_c = min(idx_r, self.td_max - 1)
-            lambda_mat[idx_r, idx_c] += (1 - np.sum(lambda_mat[idx_r, :]))
+            lambda_matrix[idx_r, idx_c] += (1 - np.sum(lambda_matrix[idx_r, :]))
 
-        return lambda_mat
+        return lambda_matrix
 
     # =============================================================================================
     # --- Sample Generation Functionality ---------------------------------------------------------
@@ -392,34 +392,76 @@ class CollisionPro:
 
     def generate_training_data(self, samples: List[Sample], func_inference: Callable):
         """
-        This function is the heart of the CollisionPro functionality.
-        It calculates the targets for the collision probability distributions.
+        Generate training data for collision probability distribution estimation.
 
-        :param samples: A list of Samples
-        :param func_inference: A function that returns the current collision probability distribution estimate given the states
-        :return: A tuple with the inputs (states) and targets (TD-return), where the last value for each target is the weighing of the loss
+        This function calculates the targets for the collision probability distributions based on provided samples
+        and an inference function.
+
+        Args:
+            samples (List[Sample]): A list of Sample objects containing current states, target states and the information of a collision event.
+            func_inference (Callable): A function that returns the current collision probability distribution estimate given the states
+                                       with dimension {number of states, *state dimension}.
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]:
+                A tuple containing the inputs (states) and targets (TD-return) for training the CollisionPro model.
+                The last value for each target is the weight for the loss function.
+                input dimension :: {number of samples, *state dimension}
+                target dimension :: {number of samples, n_h + 1}
+
+        Notes:
+            - The inputs represent the states of the environment.
+            - The targets represent the fixed-finite TD-return.
+            - TD-targets are calculated based on the provided samples and the inference function.
+
+        Detailed Explanation:
+        1. Inputs are generated
+            - Inputs are the current states of samples and are extracted from the samples
+        2. Evaluate target states
+            - Evaluate all target/future states that are later used for bootstrapping.
+            - First store the target states of all samples in one array and evaluate them with one pass via the provided inference function.
+            - In order to redistribute the target states to each sample respectively, a global indexing is introduced.
+            - Each sample stores the index of its targets, respectively.
+        3. Generate targets (see paper for more information)
+            - Let us consider the general idea of the target generation (in case where n_h=td_max):
+            - The targets are calculated, where each estimator/head (p_{t->t+i}) is bootstrapping from all (p_{t->t+j}), where j<i.
+            - This means that the first head is bootstrapping from one value, the second from two values, the third from three and so on.
+            - Next, let us write the update function as follows: P_target{n_h, 1} = SUM( LambdaMatrix{n_h, n_h} ⊙ P_triangular{n_h, n_h}, axis=1)
+                - ⊙ is the Hadamard product
+                - Lambda is a lower triangular matrix
+                - P_triangular is a lower triangular matrix
+            - For n_h=3 and td_max=n_h the target generation equation looks like the following:
+                | p_{t -> t+1} |      ( | l_{1, 1}        0        0 |   | r_{t+1}            0            0 |          )
+                | p_{t -> t+2} | = SUM( | l_{2, 1} l_{2, 2}        0 | ⊙ | p_{t+1->t+2} r_{t+2}            0 | , axis=1 )
+                | p_{t -> t+3} |      ( | l_{3, 1} l_{2, 3} l_{3, 3} |   | p_{t+1->t+3} p_{t+2->t+3} r_{t+3} |          )
+
+        Raises:
+            ValueError: If the length of samples is less than 1.
         """
 
-        input_dim = samples[0].cur_state.shape
+        state_dim = samples[0].cur_state.shape
         n_samples = len(samples)
 
         # =================================================
-        # --- Generate inputs -----------------------------
+        # --- 1. Generate inputs --------------------------
         # =================================================
 
-        inputs = np.zeros((n_samples, *input_dim)).squeeze()
+        inputs = np.zeros((n_samples, *state_dim)).squeeze()
 
         for idx, sample in enumerate(samples):
             inputs[idx] = sample.cur_state
 
         # =================================================
-        # --- Evaluate target states ----------------------
+        # --- 2. Evaluate target states -------------------
         # =================================================
 
         all_target_states = []
         idx_global = 0
+
         for sample in samples:
             all_target_states.extend(sample.target_states)
+
+            # Handle indexing
             n_target_states = len(sample.target_states)
             sample.indices = (list(range(idx_global, idx_global + n_target_states)))
             idx_global += n_target_states
@@ -429,34 +471,32 @@ class CollisionPro:
         all_target_probs = func_inference(all_target_states)
 
         # =================================================
-        # --- Generate targets ----------------------------
+        # --- 3. Generate targets -------------------------
         # =================================================
 
         # Allocate the targets for the approximator. +1 as the last entry specifies the weighing for the loss.
         targets = np.zeros((n_samples, self.n_h + 1))
-        # By default, set all values to -1
-        target_prob_triangular_template = np.tril(-np.ones((self.n_h, self.td_max), dtype=float))
+
 
         for idx, sample in enumerate(samples):
-            target_prob_triangular = np.copy(target_prob_triangular_template)
+            # By default, set all values to -1
+            p_triangular_matrix = np.tril(-np.ones((self.n_h, self.td_max), dtype=float))
 
-            # Create probability values for each row, where the ith row corresponds to the ith + 1 predictor.
+            # Create probability values for each column.
             if sample.is_collision_predecessor():
-                # If sample is affected by a collision, then set collision probs and all successor probs to -1.
-
                 for i in range(len(sample.target_states) - 1):
-                    target_prob_i = all_target_probs[sample.indices[i]]
-                    target_prob_triangular[:, i] = np.concatenate([np.zeros(i + 1), target_prob_i[:-(i + 1)]])
+                    p_target_i = all_target_probs[sample.indices[i]]
+                    p_triangular_matrix[:, i] = np.concatenate([np.zeros(i + 1), p_target_i[:-(i + 1)]])
 
             else:
                 for i in range(self.td_max):
-                    target_prob_i = all_target_probs[sample.indices[i]]
-                    target_prob_triangular[:, i] = np.concatenate([np.zeros(i + 1), target_prob_i[:-(i + 1)]])
+                    p_target_i = all_target_probs[sample.indices[i]]
+                    p_triangular_matrix[:, i] = np.concatenate([np.zeros(i + 1), p_target_i[:-(i + 1)]])
 
             # Calculate TD-targets
-            targets[idx, :-1] = np.sum(target_prob_triangular * self.lambda_mat, axis=1)
+            targets[idx, :-1] = np.sum(self.lambda_matrix * p_triangular_matrix, axis=1)
 
-            # Add weighting for loss function
+            # Add weighing for loss function
             targets[idx, -1] = self.p_nc / self.p_c if sample.is_collision_predecessor() else 1.0
 
         return inputs, targets
