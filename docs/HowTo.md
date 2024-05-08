@@ -115,8 +115,16 @@ The code explained within that tutorial can be found [here](../collisionpro/exam
 
 ## Advanced Example
 
+### Environment Description
+
 In this example we will consider the [Moving Circles](../collisionpro/examples/moving_circles/env.py) environment.
 This environment 
+
+### Approximator
+
+### Implementation
+
+
 
 ## Sample Generation
 
@@ -130,6 +138,24 @@ TODO
 
 TODO
 
-## Tips
+## Setting Up An External Environment
 
 TODO
+
+## Tips & Notes
+
+### Parameters
+
+TODO
+
+### Effective learning
+
+- **[Large batch size]** In my experience larger batch sizes work better than smaller batch sizes.
+- **[Is model complexity enough?]** As for each learning cycle new samples are generated, overfitting is not a real issue. Consequently, we can increase the model size and check if performance increases.
+- **[Is the state representation powerful enough?]** In case the state representation is not powerful enough you cannot learn efficiently the collision probabilities. One way to improve the temporal information is to apply a stacking of observations bigger than 1 (`n_stacking` > 1)
+- **[Are enough collision-related samples available?]** Via `p_nc`and `p_c`you can specify the probability to sample non-collision-related and collision-related samples. In case collision are very rare it is recommanded that `p_c` >> `p_nc`.
+- **[Good learning rate (decay)?]** The learning rate is a crucial parameter. Too high, and the learning process can become unstable––Too low, and it might learns too slow. 
+
+## Further Questions?
+
+If you have any questions or interesting ideas concerning the CollisionPro framework, so please let me know :)
