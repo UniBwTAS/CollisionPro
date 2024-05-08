@@ -22,7 +22,7 @@ class Approximator:
         self.batch_size = batch_size
         self.loss_interval = loss_interval
         self.loss_cumulative = loss_cumulative
-        self.lr_start = lr_start
+        self.lr = lr_start
         self.lr_decay = lr_decay
         self.beta_1 = beta_1
         self.beta_2 = beta_2
@@ -97,7 +97,7 @@ class Approximator:
         # =================================================
 
         model = tf.keras.Model(inputs=input_layer, outputs=concatenated_outputs)
-        self.optimizer = tf.keras.optimizers.legacy.Nadam(learning_rate=self.lr_start,
+        self.optimizer = tf.keras.optimizers.legacy.Nadam(learning_rate=self.lr,
                                                           beta_1=self.beta_1,
                                                           beta_2=self.beta_2)
 
@@ -119,5 +119,9 @@ class Approximator:
                       validation_split=0.1,
                       batch_size=self.batch_size,
                       )
+
+        # Adjust learning rate
+        self.lr = self.lr * self.lr_decay
+        self.optimizer.lr.assign(self.lr)
 
 
