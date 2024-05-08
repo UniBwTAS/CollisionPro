@@ -347,7 +347,7 @@ class CollisionPro:
         while len(eval_samples["inputs"]) < N_samp_eval:
             episode = self.run_episode()
             episode = self.stacking(episode)
-            episode = self.create_td_samples(episode)
+            episode = self.create_td_samples(episode)["td_samples"]
 
             N_transitions = len(episode) - 1
             N_samples = int(N_transitions * p_s)
@@ -373,14 +373,9 @@ class CollisionPro:
     def set_evaluation_samples(self, eval_samples):
         self.eval_samples = eval_samples
 
-    def evaluate(self, func_inference, verbose=True, eval_samples=None):
-        if eval_samples is None:
-            cur_eval_samples = self.eval_samples
-        else:
-            cur_eval_samples = eval_samples
-
-        pred = func_inference(np.row_stack(cur_eval_samples["inputs"]))
-        targets = np.row_stack(cur_eval_samples["targets"])
+    def evaluate(self, func_inference, verbose=True):
+        pred = func_inference(np.row_stack(self.eval_samples["inputs"]))
+        targets = np.row_stack(self.eval_samples["targets"])
 
         errors_acc = np.mean(np.square(pred - targets), axis=0)
         errors_pes = np.mean(pred - targets, axis=0)

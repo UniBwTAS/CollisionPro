@@ -4,6 +4,8 @@ from collisionpro.examples.moving_circles.controller import Controller
 from collisionpro.core.collisionpro import CollisionPro
 from collisionpro.core.visualize import create_collision_characteristics
 
+import numpy as np
+import matplotlib.pyplot as plt
 
 def run(n_h=20,
         td_max=10,
@@ -47,6 +49,11 @@ def run(n_h=20,
                                  n_stacking=n_stacking,
                                  controller=controller)
 
+    evaluation_samples = collision_pro.generate_evaluation_samples(10000, p_s=0.1)
+    collision_pro.set_evaluation_samples(evaluation_samples)
+    err_acc = []
+    err_pes = []
+
     # =========================================================
     # --- Training --------------------------------------------
     # =========================================================
@@ -55,6 +62,11 @@ def run(n_h=20,
         samples = collision_pro.generate_samples(n_samp_total)
         inputs, targets = collision_pro.generate_training_data(samples, approximator.inference)
         approximator.fit(inputs, targets)
+
+        cur_err_ass, cur_err_pes = collision_pro.evaluate(approximator.inference)
+
+        err_acc.append(np.mean(cur_err_ass))
+        err_pes.append(np.mean(cur_err_pes))
 
         print(f"Cycle [{idx + 1}/{n_training_cycles}]")
 
@@ -70,6 +82,30 @@ def run(n_h=20,
                                      dt=env_moving_circles.dt,
                                      save_figures=save_figures,
                                      path=path)
+
+    # =========================================================
+    # --- Plot Learning Performance ---------------------------
+    # =========================================================
+
+    fig = plt.figure()
+    ax = plt.gca()
+    ax.set_title("Accuracy")
+    ax.set_xlabel("Learning steps")
+    ax.set_ylabel("Error")
+    ax.plot(err_acc, 'b-o')
+    ax.grid()
+    fig.show()
+
+    fig = plt.figure()
+    ax = plt.gca()
+    ax.set_title("Pessimism")
+    ax.set_xlabel("Learning steps")
+    ax.set_ylabel("Error")
+    ax.plot(err_pes, 'b-o')
+    ax.grid()
+    fig.show()
+
+    plt.show()
 
     # =========================================================
     # --- Animate ---------------------------------------------
