@@ -29,7 +29,7 @@ def create_collision_characteristics(func_inference,
     save_figures : bool, optional
         If True, generated figures will be saved to disk. Default is False.
     path : str, optional
-        The directory path to save the figures. If None, figures will be saved in the current directory. Default is None.
+        The absolute path to save the figures. If None, figures will be saved in the current directory. Default is None.
 
     Returns:
     -------
@@ -37,10 +37,11 @@ def create_collision_characteristics(func_inference,
 
     Notes:
     ------
-    - The function generates collision characteristics by running multiple episodes and extracting the last n_h steps of the collision probability distribution estimation.
+    - The function generates collision characteristics by running multiple episodes and extracting the last n_h steps
+      of the collision probability distribution estimation.
     - Characteristics are calculated using the provided function for inference.
     - Figures can be generated for mean characteristics, individual examples, or both, depending on the 'kind' parameter.
-    - If collision happens before n_h steps, generation terminates.
+    - If collision happens before n_h steps, function terminates.
 
     Example:
     --------

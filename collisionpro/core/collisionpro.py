@@ -80,20 +80,20 @@ class CollisionPro:
 
     def _get_lambda_matrix(self):
         """
-            Calculates the lambda matrix used for TD(lambda) target calculation.
+        Calculates the lambda matrix used for TD(lambda) target calculation.
 
-            This function generates the lambda matrix, which plays a crucial role in calculating TD(lambda) targets.
-            Each row of the matrix corresponds to a specific predictor (lookahead step)
-            and contains the corresponding lambda values for calculating the discounted n-step returns.
+        This function generates the lambda matrix, which plays a crucial role in calculating TD(lambda) targets.
+        Each row of the matrix corresponds to a specific predictor (lookahead step)
+        and contains the corresponding lambda values for calculating the discounted n-step returns.
 
-            The first row has only one non-zero entry, representing the full weight on the immediate reward (collision or non-collision.
-            Subsequent rows have increasing numbers of non-zero entries (seconds row has two non-zero entries and so on).
-            Each row sums up to 1, ensuring the correct weighting of rewards within the TD(lambda) target calculation.
+        The first row has only one non-zero entry, representing the full weight on the immediate reward (collision or non-collision.
+        Subsequent rows have increasing numbers of non-zero entries (seconds row has two non-zero entries and so on).
+        Each row sums up to 1, ensuring the correct weighting of rewards within the TD(lambda) target calculation.
 
-            Returns:
-                NumPy array representing the lambda matrix with dimensions (n_h x td_max), where:
-                    - n_h: Number of lookahead steps (predictors).
-                    - td_max: Maximum return horizon for TD-lambda calculations.
+        Returns:
+            NumPy array representing the lambda matrix with dimensions (n_h x td_max), where:
+                - n_h: Number of lookahead steps (predictors).
+                - td_max: Maximum return horizon for TD-lambda calculations.
         """
 
         # Generate lambda vector
@@ -121,25 +121,25 @@ class CollisionPro:
 
     def run_episode(self):
         """
-            Runs a single episode in the environment and collects observations, actions, rewards, and collision information.
+        Runs a single episode in the environment and collects observations, actions, rewards, and collision information.
 
-            This function interacts with the environment to simulate an episode. It starts by resetting the environment
-            and then iterates through steps until the episode terminates. During each step, it:
+        This function interacts with the environment to simulate an episode. It starts by resetting the environment
+        and then iterates through steps until the episode terminates. During each step, it:
 
-            - Retrieves the current state from the environment.
-            - If a controller is provided, it queries the controller for an action based on the current state.
-            - Stores the current state, action, and reward in the episode data.
-            - Executes the action in the environment and receives the next state, reward, and termination information.
-            - Repeats these steps until the episode ends due to termination or truncation.
+        - Retrieves the current state from the environment.
+        - If a controller is provided, it queries the controller for an action based on the current state.
+        - Stores the current state, action, and reward in the episode data.
+        - Executes the action in the environment and receives the next state, reward, and termination information.
+        - Repeats these steps until the episode ends due to termination or truncation.
 
-            Finally, the function checks for a collision event based on the environment's information and updates the episode data accordingly.
+        Finally, the function checks for a collision event based on the environment's information and updates the episode data accordingly.
 
-            Returns:
-                A dictionary containing the collected episode data:
-                    - observations: List of observed states throughout the episode.
-                    - actions: List of actions taken in each step (None for the terminal state).
-                    - rewards: List of rewards received in each step.
-                    - collision: Boolean indicating whether a collision occurred during the episode.
+        Returns:
+            A dictionary containing the collected episode data:
+                - observations: List of observed states throughout the episode.
+                - actions: List of actions taken in each step (None for the terminal state).
+                - rewards: List of rewards received in each step.
+                - collision: Boolean indicating whether a collision occurred during the episode.
             """
 
         self.env.reset()
@@ -177,22 +177,22 @@ class CollisionPro:
 
     def stacking(self, episode):
         """
-            Processes an episode data dictionary to generate stacked state representations and corresponding samples.
+        Processes an episode data dictionary to generate stacked state representations and corresponding samples.
 
-            This function iterates through the observations collected during an episode and creates stacked state representations.
-            Each stacked state consists of the last `n_stacking` observations from the episode. It then generates samples
-            containing the stacked state, reward received at that state, and the action taken (if applicable).
+        This function iterates through the observations collected during an episode and creates stacked state representations.
+        Each stacked state consists of the last `n_stacking` observations from the episode. It then generates samples
+        containing the stacked state, reward received at that state, and the action taken (if applicable).
 
-            Args:
-                episode: A dictionary containing episode data generated by the `run_episode` function.
+        Args:
+            episode: A dictionary containing episode data generated by the `run_episode` function.
 
-            Returns:
-                A dictionary containing processed episode data:
-                    - samples: List of samples, each containing:
-                        - state: NumPy array representing the stacked state.
-                        - reward: Reward received at the corresponding state.
-                        - action: Action taken at the corresponding state (None for the terminal state).
-                    - collision: Boolean indicating whether a collision occurred during the episode.
+        Returns:
+            A dictionary containing processed episode data:
+                - samples: List of samples, each containing:
+                    - state: NumPy array representing the stacked state.
+                    - reward: Reward received at the corresponding state.
+                    - action: Action taken at the corresponding state (None for the terminal state).
+                - collision: Boolean indicating whether a collision occurred during the episode.
         """
 
         samples_stacked = []
@@ -210,26 +210,26 @@ class CollisionPro:
 
     def create_td_samples(self, episode):
         """
-            Generates TD (Temporal Difference) samples from an episode data dictionary.
+        Generates TD (Temporal Difference) samples from an episode data dictionary.
 
-            This function processes an episode containing stacked state representations, rewards, and actions to create
-            TD samples suitable for TD-learning algorithms. It calculates the number of steps to collision for each
-            sample and creates TD samples containing:
+        This function processes an episode containing stacked state representations, rewards, and actions to create
+        TD samples suitable for TD-learning algorithms. It calculates the number of steps to collision for each
+        sample and creates TD samples containing:
 
-            - A sequence of states (up to the maximum lookahead horizon or collision event).
-            - Number of steps to the collision event (if applicable, -1 otherwise).
-            - A sequence of rewards received in those states.
+        - A sequence of states (up to the maximum lookahead horizon or collision event).
+        - Number of steps to the collision event (if applicable, -1 otherwise).
+        - A sequence of rewards received in those states.
 
-            Args:
-                episode: A dictionary containing processed episode data generated by the `stacking` function.
+        Args:
+            episode: A dictionary containing processed episode data generated by the `stacking` function.
 
-            Returns:
-                A dictionary containing TD samples:
-                    - td_samples: List of TD samples, each containing:
-                        - states: List of states within the lookahead horizon (up to `self.td_max`).
-                        - steps2collision: Number of steps to the next collision event (-1 if not applicable).
-                        - rewards: List of rewards received in the corresponding states.
-                    - collision: Boolean indicating whether a collision occurred during the episode.
+        Returns:
+            A dictionary containing TD samples:
+                - td_samples: List of TD samples, each containing:
+                    - states: List of states within the lookahead horizon (up to `self.td_max`).
+                    - steps2collision: Number of steps to the next collision event (-1 if not applicable).
+                    - rewards: List of rewards received in the corresponding states.
+                - collision: Boolean indicating whether a collision occurred during the episode.
         """
 
         episode_len = len(episode["samples"])
@@ -253,21 +253,24 @@ class CollisionPro:
 
     def sampling(self, episode):
         """
-            Performs stratified sampling of TD samples from an episode for policy learning.
+        Performs stratified sampling of TD samples from an episode for policy learning.
 
-            This function separates TD samples from a collision episode into collision and non-collision samples. It then
-            performs stratified sampling based on the specified probabilities:
+        This function separates TD samples from a collision episode into collision and non-collision related samples. It then
+        performs stratified sampling based on the specified probabilities:
 
-            - `self.p_nc`: Probability of sampling non-collision samples.
-            - `self.p_c`: Probability of sampling collision samples.
+        - p_nc: Probability of sampling non-collision related samples.
+        - p_c: Probability of sampling collision related samples.
 
-            The function returns a combined list of sampled non-collision and collision samples.
+        Collision related samples are the last n_h + 1 samples.
+        We add +1 as the last sample is the actual collision.
 
-            Args:
-                episode: A dictionary containing processed episode data and TD samples generated by the `create_td_samples` function.
+        The function returns a combined list of sampled non-collision and collision samples.
 
-            Returns:
-                List of sampled TD samples for policy learning.
+        Args:
+            episode: A dictionary containing processed episode data and TD samples generated by the `create_td_samples` function.
+
+        Returns:
+            List of sampled TD samples for policy learning.
         """
 
         if episode["collision"]:
@@ -284,23 +287,25 @@ class CollisionPro:
 
     def generate_samples(self, n, return_all=False):
         """
-            Generates a specified number of TD samples for policy learning.
+        Generates a specified number of TD samples for policy learning.
 
-            This function iteratively generates episodes by running the environment, processing them into stacked states
-            and TD samples, and performing stratified sampling based on collision events. It continues generating episodes
-            until the desired number of samples (`n`) is obtained.
+        This function iteratively generates episodes by running the environment, processing them into stacked states
+        and TD samples, and performing stratified sampling based on collision related events. It continues generating episodes
+        until the desired number of samples (`n`) is obtained.
 
-            Args:
-                n: Number of TD samples to generate.
-                return_all: Boolean flag indicating whether to return all generated episode data (default: False).
+        The 'return_all' flag is relevant for the evaluation functionality.
 
-            Returns:
-                If `return_all` is False:
-                    A list of `n` randomly sampled TD samples for policy learning.
-                If `return_all` is True:
-                    A tuple containing:
-                        - A list of `n` randomly sampled TD samples for policy learning.
-                        - A list of all generated episode data dictionaries.
+        Args:
+            n: Number of TD samples to generate.
+            return_all: Boolean flag indicating whether to return all generated episode data (default: False).
+
+        Returns:
+            If `return_all` is False:
+                A list of `n` randomly sampled TD samples for policy learning.
+            If `return_all` is True:
+                A tuple containing:
+                    - A list of `n` randomly sampled TD samples for policy learning.
+                    - A list of all generated episode data dictionaries.
         """
 
         samples = []
@@ -500,12 +505,5 @@ class CollisionPro:
             targets[idx, -1] = self.p_nc / self.p_c if sample.is_collision_predecessor() else 1.0
 
         return inputs, targets
-
-
-
-
-
-
-
 
 

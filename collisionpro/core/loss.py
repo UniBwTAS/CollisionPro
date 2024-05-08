@@ -12,10 +12,10 @@ def get_loss_function(n_h, const_interval=1.0, const_cumulative=1.0):
         y_pred :: (batch_size, N_h + 1)
                   - The last element for y_pred is the weighing factor collision and non-collision samples.
 
-    Parameters:
-        :param n_h: Number of lookahead steps
-        :param const_interval: Constant multiplier for interval loss (being in the range [0; 1]
-        :param const_cumulative: Constant multiplier for cumulative loss (distribution must be strictly increasing)
+    Args:
+        n_h: Number of lookahead steps
+        const_interval: Constant multiplier for interval loss (being in the range [0; 1]
+        const_cumulative: Constant multiplier for cumulative loss (distribution must be strictly increasing)
     """
 
     def loss_function(y_true, y_pred):
