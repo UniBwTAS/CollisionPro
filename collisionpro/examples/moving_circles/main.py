@@ -28,7 +28,7 @@ def run(n_h=20,
     # =========================================================
 
 
-    env_moving_circles = MovingCircles(max_obstacles=3)
+    env_moving_circles = MovingCircles(max_obstacles=1)
     env_moving_circles.reset()
 
     controller = Controller(env_moving_circles)
