@@ -118,7 +118,6 @@ The code explained within that tutorial can be found [here](../collisionpro/exam
 ### Environment Description
 
 In this example we will consider the [Moving Circles](../collisionpro/examples/moving_circles/env.py) environment.
-This environment 
 
 ### Approximator
 
@@ -155,6 +154,7 @@ TODO
 - **[Is the state representation powerful enough?]** In case the state representation is not powerful enough you cannot learn efficiently the collision probabilities. One way to improve the temporal information is to apply a stacking of observations bigger than 1 (`n_stacking` > 1)
 - **[Are enough collision-related samples available?]** Via `p_nc`and `p_c`you can specify the probability to sample non-collision-related and collision-related samples. In case collision are very rare it is recommanded that `p_c` >> `p_nc`.
 - **[Good learning rate (decay)?]** The learning rate is a crucial parameter. Too high, and the learning process can become unstable––Too low, and it might learns too slow. 
+- **[More data]** Obviously, the more data you provide, the better the collision probabilities can be estimated. 
 
 ## Further Questions?
 
