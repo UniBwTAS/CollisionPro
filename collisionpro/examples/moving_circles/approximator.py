@@ -12,8 +12,8 @@ class Approximator:
                  batch_size=16,
                  loss_interval=0.5,
                  loss_cumulative=0.5,
-                 lr_start=5e-4,
-                 lr_decay=0.9,
+                 lr_start=2e-4,
+                 lr_decay=0.875,
                  beta_1=0.9,
                  beta_2=0.95):
 
@@ -48,7 +48,8 @@ class Approximator:
         return model
 
     def inference(self, inputs):
-        return self.model(inputs)
+        verbose = 2 if inputs.shape[0] > 2000 else 1
+        return self.model.predict(inputs, batch_size=256, verbose=verbose)
 
     def fit(self, inputs, targets):
         self.model.fit(inputs,

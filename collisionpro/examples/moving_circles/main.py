@@ -7,28 +7,32 @@ from collisionpro.core.visualize import create_collision_characteristics
 import numpy as np
 import matplotlib.pyplot as plt
 
-def run(n_h=20,
-        td_max=10,
-        p_c=1.0,
-        p_nc=0.2,
+
+def run(n_h=40,
+        td_max=15,
+        p_c=0.1,
+        p_nc=0.05,
         n_training_cycles=15,
-        n_samp_total=2500,
-        n_stacking=1,
-        lr_start=2e-4,
-        lr_decay=0.999,
+        n_samp_total=1000,
+        lr_start=5e-4,
+        lr_decay=0.7,
+        loss_cumulative=1.0,
+        loss_interval=1.0,
         lambda_val=0.7,
-        batch_size=32,
+        batch_size=64,
         epochs=16,
-        num_collision_characteristics=5,
+        num_collision_characteristics=20,
         save_figures=False,
         path=None):
+
+    print("The learning process may require some time, the duration of which depends on your hardware specifications.")
 
     # =========================================================
     # --- Initialization --------------------------------------
     # =========================================================
 
 
-    env_moving_circles = MovingCircles(max_obstacles=1)
+    env_moving_circles = MovingCircles(dt=0.2)
     env_moving_circles.reset()
 
     controller = Controller(env_moving_circles)
@@ -38,7 +42,9 @@ def run(n_h=20,
                                 lr_start=lr_start,
                                 lr_decay=lr_decay,
                                 batch_size=batch_size,
-                                epochs=epochs)
+                                epochs=epochs,
+                                loss_interval=loss_interval,
+                                loss_cumulative=loss_cumulative)
 
     collision_pro = CollisionPro(env=env_moving_circles,
                                  p_c=p_c,
@@ -46,7 +52,6 @@ def run(n_h=20,
                                  n_h=n_h,
                                  lambda_val=lambda_val,
                                  td_max=td_max,
-                                 n_stacking=n_stacking,
                                  controller=controller)
 
     evaluation_samples = collision_pro.generate_evaluation_samples(10000, p_s=0.1)
@@ -111,8 +116,9 @@ def run(n_h=20,
     # --- Animate ---------------------------------------------
     # =========================================================
 
-    # env_moving_circles.reset()
-    # env_moving_circles.rendering(controller, delta_time=0.025)
+    # Uncomment to start rendering for Moving Circles
+    env_moving_circles.reset()
+    env_moving_circles.rendering(controller, delta_time=0.025, inference=approximator.inference)
 
 
 if __name__ == "__main__":

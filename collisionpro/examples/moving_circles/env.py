@@ -1,7 +1,7 @@
 import math
 import random
 import numpy as np
-from copy import deepcopy
+import copy
 import arcade
 
 
@@ -131,14 +131,13 @@ class Resonator:
 
 class MovingCircles:
     def __init__(self,
-                 radius_ego=1.5,
+                 radius_ego=1.75,
                  v_x_ego=1.0,
                  dt=0.1,
                  k_y=0.2,
                  m=1,
                  max_obstacles=1,
                  obstacle_creation_prop=0.01,
-                 n_rel_obs=1,
                  state_type="compact",
                  action_type="continuous",  # continuous or discrete
                  noisy_perception=False):
@@ -151,7 +150,6 @@ class MovingCircles:
 
         self.max_obstacles = max_obstacles
         self.obstacle_creation_prop = obstacle_creation_prop
-        self.n_rel_obs = n_rel_obs
         self.dt = dt
 
         self.x_rear = -5
@@ -166,7 +164,7 @@ class MovingCircles:
             raise RuntimeError(f"Action type must be 'continuous' or 'discrete'. Got :: {action_type}")
         self.state_type = state_type  # "full" or "compact"
         self.noisy_perception = noisy_perception
-        self.state_dim = self.n_state_prefix + self.n_res_dim * self.n_rel_obs
+        self.state_dim = self.n_state_prefix + self.n_res_dim * self.max_obstacles
 
         self.ego = None
         self.collision = None
@@ -178,7 +176,7 @@ class MovingCircles:
         self.reset()
 
     def reset(self):
-        self.ego = deepcopy(self.ego_init)
+        self.ego = copy.deepcopy(self.ego_init)
         self.collision = False
         self.obstacles = []
         self.relevant_obstacle = []
@@ -249,20 +247,20 @@ class MovingCircles:
         # Reset relevant obstacles
         self.relevant_obstacle = []
 
-        # Get next relevant obstacle
+        # Get next relevant obstacles
         n_rel_obs_ctr = 0
         for idx in range(len(self.obstacles)):
-            if self.obstacles[idx].x + self.obstacles[idx].r > self.ego.x - 3.0:
+            if self.obstacles[idx].x + self.obstacles[idx].r > self.ego.x - 2.0:
                 self.relevant_obstacle.append(self.obstacles[idx])
                 n_rel_obs_ctr += 1
 
-                if n_rel_obs_ctr == self.n_rel_obs:
+                if n_rel_obs_ctr == self.max_obstacles:
                     break
 
         # Add each relevant obstacle to state
         for rel_obs in self.relevant_obstacle:
             state_obs = [rel_obs.x - self.ego.x,
-                         rel_obs.y - self.ego.y,
+                         rel_obs.y,
                          rel_obs.v_x,
                          rel_obs.v_y,
                          rel_obs.a_y,
@@ -280,8 +278,8 @@ class MovingCircles:
             state = state + state_obs
 
         # If not enough relevant obstacles, fill state vector with zeros
-        for idx in range(self.n_rel_obs - len(self.relevant_obstacle)):
-            state.append(self.x_front)
+        for idx in range(self.max_obstacles - len(self.relevant_obstacle)):
+            state.append(0)
             state.append(0)
             state.append(0)
             state.append(0)
@@ -351,7 +349,7 @@ class MovingCircles:
 
         return self.state, reward, self.terminated, False, info
 
-    def rendering(self, controller, delta_time=None, max_length=None, EuclidToPixel=30):
+    def rendering(self, controller, delta_time=None, max_length=None, EuclidToPixel=30, inference=None):
         X_min = self.x_rear
         X_max = self.x_front
         X_width = X_max - X_min
@@ -363,7 +361,7 @@ class MovingCircles:
 
         delta_time = self.dt if delta_time is None else delta_time
 
-        ArcadeVisualization(P_width, P_height, self, controller, EuclidToPixel, delta_time)
+        ArcadeVisualization(P_width, P_height, self, controller, EuclidToPixel, delta_time, inference)
         arcade.run()
 
 
@@ -373,7 +371,7 @@ class MovingCircles:
 
 
 class ArcadeVisualization(arcade.Window):
-    def __init__(self, width, height, env, controller, EuclidToPixel=100, dt=.05):
+    def __init__(self, width, height, env, controller, EuclidToPixel=100, dt=.05, inference=None):
         super().__init__(width, height, "Moving Circle Visualization")
         self.set_update_rate(dt)
         arcade.set_background_color(arcade.color.WHITE)
@@ -389,6 +387,7 @@ class ArcadeVisualization(arcade.Window):
         self.state = None
         self.action = None
         self.action_val = 0.0
+        self.inference = inference
 
     def toPixel(self, x):
         return x * self.EuclidToPixel
@@ -430,8 +429,34 @@ class ArcadeVisualization(arcade.Window):
         elif self.action_val < 0.0:
             arcade.draw_line(ego_px, ego_py, ego_px, ego_py - 50, (0, 200, 0), 4)
 
-        # Write q values
-        px, py = self.toPixelCoord(self.X_min, self.Y_min)
+        # Visualize collision probability distribution if given
+        if self.inference is not None and self.state is not None:
+            distribution = -self.inference(self.state.reshape(1, -1)).squeeze()
+            n_h = distribution.size
+
+            px_start = 20
+            px_end = 120
+            if n_h > 1:
+                px_step = (px_end - px_start) / (n_h - 1)
+            else:
+                px_step = 0.0
+            py_start = 225
+            py_end = 275
+
+            # Draw box
+            arcade.draw_lrtb_rectangle_filled(px_start, px_end, py_end, py_start, (255, 255, 255))
+            arcade.draw_line(px_start, py_start, px_end, py_start, (100, 100, 100), 2)
+            arcade.draw_line(px_start, py_end, px_end, py_end, (100, 100, 100), 2)
+            arcade.draw_line(px_start, py_start, px_start, py_end, (100, 100, 100), 2)
+            arcade.draw_line(px_end, py_start, px_end, py_end, (100, 100, 100), 2)
+
+            for idx, p in enumerate(distribution):
+                px_cur = px_start + idx * px_step
+                py_cur = py_start + (py_end - py_start) * p
+
+                arcade.draw_point(px_cur, py_cur,(255, 0, 0), size=2)
+
+
 
     def update(self, delta_time):
         self.action = self.controller.get_action(self.env.state)
@@ -439,7 +464,7 @@ class ArcadeVisualization(arcade.Window):
         self.state, _, terminated, truncated, _ = self.env.step(self.action)
 
         if terminated or truncated:
-            self.close()
+            self.env.reset()
 
 
 if __name__ == "__main__":

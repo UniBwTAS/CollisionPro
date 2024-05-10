@@ -4,10 +4,10 @@ import numpy as np
 
 def generate_model(n_h,
                    state_dim,
-                   n_neurons_backbone=128,
+                   n_neurons_backbone=256,
                    n_neurons_heads=128,
                    n_layers_backbone=16,
-                   n_layers_heads=4,
+                   n_layers_heads=8,
                    n_skip_block_backbone=4,
                    n_skip_block_heads=4):
 
@@ -90,7 +90,7 @@ def generate_model(n_h,
     concatenated_outputs = tf.keras.layers.Concatenate()(outputs)
 
     # =================================================
-    # --- Model & Optimizer ---------------------------
+    # --- Model ---------------------------------------
     # =================================================
 
     model = tf.keras.Model(inputs=input_layer, outputs=concatenated_outputs)
