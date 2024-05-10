@@ -202,7 +202,7 @@ class CollisionPro:
             obs_stacked = obs_stacked[-self.n_stacking:]
             if len(obs_stacked) == self.n_stacking:
                 samples_stacked.append({
-                    "state": np.stack(obs_stacked),
+                    "state": np.concatenate(obs_stacked),
                     "reward": episode["rewards"][idx],
                     "action": episode["actions"][idx],
                 })
