@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name='CollisionPro',
     version="1.0.0",
-    packages=["collisionpro"],
+    packages=find_packages(),
     url='https://github.com/UniBwTAS/CollisionPro',
     author='Thomas Steinecker',
     author_email='thomas.steinecker@unibw.de',
