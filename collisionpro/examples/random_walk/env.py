@@ -24,7 +24,7 @@ class RandomWalk:
         self.reset()
 
     def reset(self):
-        self.state = np.random.randint(1, self.n_states - 1)
+        self.state = np.array([np.random.randint(1, self.n_states - 1)])
         self.terminated = False
 
     def is_terminated(self):
