@@ -39,9 +39,9 @@ class Approximator:
                                           const_cumulative=self.loss_cumulative,
                                           n_h=self.n_h)
 
-        self.optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=self.lr,
-                                                         beta_1=self.beta_1,
-                                                         beta_2=self.beta_2)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr,
+                                                  beta_1=self.beta_1,
+                                                  beta_2=self.beta_2)
 
         model.compile(optimizer=self.optimizer, loss=loss_function)
 
