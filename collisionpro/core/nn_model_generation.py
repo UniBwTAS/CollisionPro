@@ -4,8 +4,8 @@ import numpy as np
 
 def generate_model(n_h,
                    state_dim,
-                   n_neurons_backbone=256,
-                   n_neurons_heads=128,
+                   n_neurons_backbone=128,
+                   n_neurons_heads=64,
                    n_layers_backbone=16,
                    n_layers_heads=8,
                    n_skip_block_backbone=4,

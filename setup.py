@@ -12,5 +12,6 @@ setup(
         'numpy',
         'matplotlib',
         'tensorflow',
+        'arcade',
     ],
 )

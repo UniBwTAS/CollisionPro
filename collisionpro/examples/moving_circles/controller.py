@@ -30,7 +30,7 @@ class Controller:
         self.u_repulsive = u_repulsive
         self.env: MovingCircles = env
 
-    def get_action(self, state):
+    def get_action(self, env):
         if self.add_noise:
             noise = self.noise_generator.sample()[0]
         else:

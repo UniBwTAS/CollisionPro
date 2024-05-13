@@ -6,22 +6,24 @@ from collisionpro.core.visualize import create_collision_characteristics
 
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 
 def run(n_h=40,
-        td_max=15,
-        p_c=0.1,
-        p_nc=0.05,
+        td_max=8,
+        p_c=0.05,
+        p_nc=0.005,
         n_training_cycles=15,
-        n_samp_total=1000,
+        n_samp_total=10000,
         lr_start=5e-4,
-        lr_decay=0.7,
-        loss_cumulative=1.0,
-        loss_interval=1.0,
-        lambda_val=0.7,
-        batch_size=64,
-        epochs=16,
-        num_collision_characteristics=20,
+        lr_decay=0.8,
+        loss_cumulative=.1,
+        loss_interval=.1,
+        lambda_val=0.6,
+        batch_size=128,
+        epochs=8,
+        n_stacking=20,
+        num_collision_characteristics=10,
         save_figures=False,
         path=None):
 
@@ -31,14 +33,14 @@ def run(n_h=40,
     # --- Initialization --------------------------------------
     # =========================================================
 
-
-    env_moving_circles = MovingCircles(dt=0.2)
+    env_moving_circles = MovingCircles(dt=0.2,
+                                       n_stacking=n_stacking)
     env_moving_circles.reset()
 
     controller = Controller(env_moving_circles)
 
     approximator = Approximator(n_h=n_h,
-                                state_dim=env_moving_circles.state.shape,
+                                state_dim=env_moving_circles.observation.shape[0] * n_stacking,
                                 lr_start=lr_start,
                                 lr_decay=lr_decay,
                                 batch_size=batch_size,
@@ -63,6 +65,7 @@ def run(n_h=40,
     # --- Training --------------------------------------------
     # =========================================================
 
+    t_start = time.time()
     for idx in range(n_training_cycles):
         samples = collision_pro.generate_samples(n_samp_total)
         inputs, targets = collision_pro.generate_training_data(samples, approximator.inference)
@@ -74,6 +77,8 @@ def run(n_h=40,
         err_pes.append(np.mean(cur_err_pes))
 
         print(f"Cycle [{idx + 1}/{n_training_cycles}]")
+
+    print(f"Time taken for training :: {time.time() - t_start}s")
 
     # =========================================================
     # --- Make Collision Characteristics ----------------------

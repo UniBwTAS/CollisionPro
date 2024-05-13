@@ -140,6 +140,7 @@ class MovingCircles:
                  obstacle_creation_prop=0.01,
                  state_type="compact",
                  action_type="continuous",  # continuous or discrete
+                 n_stacking=1,
                  noisy_perception=False):
 
         self.ego_init = Ego(v_x=v_x_ego, radius=radius_ego, dt=dt, k_y=k_y, m=m)
@@ -155,6 +156,10 @@ class MovingCircles:
         self.x_rear = -5
         self.x_front = 20
         self.y_height = 5
+
+        self.n_stacking = n_stacking
+        self.observations = []
+        self.observation = None
 
         self.high_level_actions = HighLevelActions
 
@@ -182,7 +187,9 @@ class MovingCircles:
         self.relevant_obstacle = []
         self.terminated = False
         self.action_val = 0.0
-        self.build_state()
+        self.observations = []
+        self.build_observation()
+        self.state = None
 
     @staticmethod
     def get_ego_y(state):
@@ -236,13 +243,9 @@ class MovingCircles:
 
         self.collision = False
 
-    def build_state(self):
-        """
-        TODO
-        """
-
+    def build_observation(self):
         # Add ego state
-        state = [self.ego.y, self.ego.v_x, self.ego.v_y]
+        observation = [self.ego.y, self.ego.v_x, self.ego.v_y]
 
         # Reset relevant obstacles
         self.relevant_obstacle = []
@@ -259,7 +262,7 @@ class MovingCircles:
 
         # Add each relevant obstacle to state
         for rel_obs in self.relevant_obstacle:
-            state_obs = [rel_obs.x - self.ego.x,
+            observation_obs = [rel_obs.x - self.ego.x,
                          rel_obs.y,
                          rel_obs.v_x,
                          rel_obs.v_y,
@@ -268,25 +271,25 @@ class MovingCircles:
 
             if self.noisy_perception:
                 dist_to_obs = np.linalg.norm([rel_obs.x - self.ego.x, rel_obs.y - self.ego.y])
-                state_obs[0] += np.random.normal(0, 0.001 * dist_to_obs)
-                state_obs[1] += np.random.normal(0, 0.001 * dist_to_obs)
-                state_obs[2] += np.random.normal(0, 0.0001 * dist_to_obs)
-                state_obs[3] += np.random.normal(0, 0.0001 * dist_to_obs)
-                state_obs[4] += np.random.normal(0, 0.0001 * dist_to_obs)
-                state_obs[5] += np.random.normal(0, 0.001 * dist_to_obs)
+                observation_obs[0] += np.random.normal(0, 0.001 * dist_to_obs)
+                observation_obs[1] += np.random.normal(0, 0.001 * dist_to_obs)
+                observation_obs[2] += np.random.normal(0, 0.0001 * dist_to_obs)
+                observation_obs[3] += np.random.normal(0, 0.0001 * dist_to_obs)
+                observation_obs[4] += np.random.normal(0, 0.0001 * dist_to_obs)
+                observation_obs[5] += np.random.normal(0, 0.001 * dist_to_obs)
 
-            state = state + state_obs
+            observation = observation + observation_obs
 
         # If not enough relevant obstacles, fill state vector with zeros
         for idx in range(self.max_obstacles - len(self.relevant_obstacle)):
-            state.append(0)
-            state.append(0)
-            state.append(0)
-            state.append(0)
-            state.append(0)
-            state.append(0)
+            observation.append(0)
+            observation.append(0)
+            observation.append(0)
+            observation.append(0)
+            observation.append(0)
+            observation.append(0)
 
-        self.state = np.array(state)
+        self.observation = np.array(observation)
 
     def get_action_value(self, action):
         # Get action value by action command
@@ -339,13 +342,19 @@ class MovingCircles:
 
         # Rewards
         reward = -1.0 if self.collision else 0.0
-        reward += -0.02 * abs(self.ego.y)
 
         self.terminated = True if self.collision else False
         info = {"collision": self.collision}
 
-        # Build state
-        self.build_state()
+        # Build observation
+        self.build_observation()
+
+        self.observations.append(self.observation)
+        if len(self.observations) >= self.n_stacking:
+            self.observations = self.observations[-self.n_stacking:]
+            self.state = np.concatenate(self.observations)
+        else:
+            self.state = None
 
         return self.state, reward, self.terminated, False, info
 
@@ -397,6 +406,9 @@ class ArcadeVisualization(arcade.Window):
 
     def on_draw(self):
         arcade.start_render()
+
+        if self.state is None:
+            return
 
         ego_x, ego_y = self.env.ego.pos
         ego_px, ego_py = self.toPixelCoord(0, ego_y)
@@ -456,8 +468,6 @@ class ArcadeVisualization(arcade.Window):
 
                 arcade.draw_point(px_cur, py_cur,(255, 0, 0), size=2)
 
-
-
     def update(self, delta_time):
         self.action = self.controller.get_action(self.env.state)
         self.action_val = self.env.get_action_value(self.action)
@@ -465,6 +475,8 @@ class ArcadeVisualization(arcade.Window):
 
         if terminated or truncated:
             self.env.reset()
+            self.state = None
+            self.action = None
 
 
 if __name__ == "__main__":

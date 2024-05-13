@@ -62,7 +62,6 @@ def create_collision_characteristics(func_inference,
 
         # Generate sample
         episode = collision_pro.run_episode()
-        episode = collision_pro.stacking(episode)
         episode = collision_pro.create_td_samples(episode)
 
         # Check if episode is long enough
