@@ -44,7 +44,7 @@ Let's create an approximator next
 
 ```python
 n_h = 5
-approximator = Approximator(n_h=n_h)
+approximator = Approximator(n_states=n_states, n_h=n_h)
 ```
 
 `n_h` is the number of lookahead steps (horizon) that we consider for our probability distribution.
