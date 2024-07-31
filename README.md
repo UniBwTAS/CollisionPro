@@ -1,11 +1,22 @@
-# CollisionPro
+<p align="center">
+<img src="./assets/CollisionProLogo.jpg" alt="drawing" width="500"/>
+</p>
 
+<div  markdown="1" align="center">
 
-```A framework for collision probability distribution estimation via temporal difference learning.```
+  `Towards XAI`
+
+</div>
+
+<div  markdown="1" align="center">
+
+  `A framework for collision probability distribution estimation via temporal difference learning`
+
+</div>
 
 ![Overview CollisionPro](./assets/overview_collisionpro.png "Overview CollisionPro")
 
----
+
 
 <p align="center">
     <img src="assets/demo.gif" alt="Demo GIF" />
