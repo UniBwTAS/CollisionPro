@@ -22,14 +22,11 @@ You can find the paper of this work [here](https://arxiv.org/abs/2407.20000).
 If you find our work useful in your research, please consider citing our paper:
 
 ```
-@misc{collisionpro,
-      title={Collision Probability Distribution Estimation via Temporal Difference Learning}, 
-      author={Thomas Steinecker and Thorsten Luettel and Mirko Maehlisch},
-      year={2024},
-      eprint={2407.20000},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2407.20000}, 
+@article{collisionpro,
+         title={Collision Probability Distribution Estimation via Temporal Difference Learning}, 
+         author={Thomas Steinecker and Thorsten Luettel and Mirko Maehlisch},
+         journal={arXiv preprint arXiv:2407.20000},
+         year={2024},
 }
 ```
 
