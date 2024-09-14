@@ -28,9 +28,10 @@ In today's deep learning era, understanding the inner workings of complex models
 
 But what sets CollisionPro apart? It's all about transparency and explainability. In an age where black-box algorithms reign supreme, CollisionPro takes a step towards explainable AI. By generating a cumulative probability distribution, it offers not just a single risk assessment value, but a spectrum of interpretable values. Moreover, each value could be interpreted in the context of reinforcement learning. 
 
-You can find the paper of this work [here](https://arxiv.org/abs/2407.20000).
+You can read a comprehensive article about this work [here](https://medium.com/@steineckertommy/finite-horizon-value-function-43354b9405d9).  
+The related research paper is available [here](https://arxiv.org/abs/2407.20000).
 
-If you find our work useful in your research, please consider citing our paper:
+If you find our work helpful in your research, please consider citing our paper:
 
 ```
 @article{collisionpro,
