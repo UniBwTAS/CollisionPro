@@ -1,16 +1,11 @@
-<p align="center">
-<img src="./assets/CollisionProLogo.jpg" alt="drawing" width="500"/>
-</p>
+<h1 align="center">
+  <a href="https://ieeexplore.ieee.org/document/10920103">CollisionPro</a>
+</h1>
+
 
 <div  markdown="1" align="center">
 
-  `Towards XAI`
-
-</div>
-
-<div  markdown="1" align="center">
-
-  `A framework for collision probability distribution estimation via temporal difference learning`
+  `Towards explainable value functions in reinforcement learning——A framework for collision probability distribution estimation via temporal difference learning`
 
 </div>
 
@@ -130,5 +125,3 @@ run()
 ## HowTo Guide
 
 Find a comprehensive Guide for CollisionPro functionalities and examples [here](./docs/HowTo.md).
-
-## 
