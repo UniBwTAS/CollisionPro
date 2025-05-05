@@ -34,12 +34,13 @@ The related research paper is available [here](https://arxiv.org/abs/2407.20000)
 If you find our work helpful in your research, please consider citing our paper:
 
 ```
-@article{collisionpro,
-         title={Collision Probability Distribution Estimation via Temporal Difference Learning}, 
-         author={Thomas Steinecker and Thorsten Luettel and Mirko Maehlisch},
-         journal={arXiv preprint arXiv:2407.20000},
-         year={2024},
-}
+@INPROCEEDINGS{steinecker2024collision,
+  author={Steinecker, Thomas and Luettel, Thorsten and Maehlisch, Mirko},
+  booktitle={2024 IEEE 27th International Conference on Intelligent Transportation Systems (ITSC)}, 
+  title={Collision Probability Distribution Estimation via Temporal Difference Learning}, 
+  year={2024},
+  pages={2645-2650},
+  doi={10.1109/ITSC58415.2024.10920103}}
 ```
 
 ---
